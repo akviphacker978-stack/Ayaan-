@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insta-Elite Downloader</title>
+    <style>
+        :root {
+            --insta-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            --bg-color: #050505;
+            --card-bg: #121212;
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8a8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, system-ui, "Segoe UI", Roboto; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            perspective: 1000px;
+            overflow-x: hidden;
+        }
+
+        /* 3D Container */
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid #333;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            transform: rotateX(2deg);
+            transition: transform 0.5s ease;
+            margin: 20px;
+        }
+
+        .app-container:hover { transform: rotateX(0deg) translateY(-5px); }
+
+        /* Follower Theme Header */
+        .profile-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #262626;
+        }
+
+        .avatar-ring {
+            width: 70px; height: 70px;
+            background: var(--insta-gradient);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .avatar-inner {
+            width: 64px; height: 64px;
+            background: #000;
+            border-radius: 50%;
+            border: 2px solid #000;
+            overflow: hidden;
+        }
+
+        .stats { display: flex; gap: 15px; flex-grow: 1; }
+        .stat-item { text-align: center; }
+        .stat-num { font-weight: bold; display: block; font-size: 16px; }
+        .stat-label { font-size: 11px; color: var(--text-secondary); }
+
+        /* Input Styling */
+        .search-box { margin-bottom: 20px; }
+        
+        input {
+            width: 100%;
+            background: #262626;
+            border: 1px solid #363636;
+            padding: 14px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus { border-color: #bc1888; }
+
+        button {
+            width: 100%;
+            background: var(--insta-gradient);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(188, 24, 136, 0.3);
+        }
+
+        /* Result Post Design */
+        #resultCard {
+            margin-top: 25px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+            animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideIn { from { transform: translateY(50px); opacity: 0; } }
+
+        .preview-img { width: 100%; height: auto; border-bottom: 1px solid #262626; }
+        
+        .download-list { padding: 15px; }
+        
+        .dl-btn {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e1e1e;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-bottom: 8px;
+            font-size: 13px;
+            border-left: 3px solid #bc1888;
+        }
+
+        .dl-btn:hover { background: #333; }
+
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 15px;
+            color: #bc1888;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="profile-section">
+        <div class="avatar-ring">
+            <div class="avatar-inner">
+                <img src="https://via.placeholder.com/64" id="headerThumb" style="width:100%">
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat-item"><span class="stat-num">1.2M</span><span class="stat-label">Followers</span></div>
+            <div class="stat-item"><span class="stat-num">482</span><span class="stat-label">Posts</span></div>
+            <div class="stat-item"><span class="stat-num">Elite</span><span class="stat-label">Status</span></div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="urlInput" placeholder="Paste URL (Insta, TikTok, etc.)">
+    </div>
+
+    <button onclick="downloadAction()">Start Download</button>
+
+    <div id="loading" class="loader">Fetching Media...</div>
+
+    <div id="resultCard">
+        <img src="" id="resThumb" class="preview-img">
+        <div class="download-list">
+            <p id="resTitle" style="margin-bottom: 10px; font-weight: 600; font-size: 14px;"></p>
+            <div id="linksContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function downloadAction() {
+        const inputUrl = document.getElementById('urlInput').value;
+        const loader = document.getElementById('loading');
+        const card = document.getElementById('resultCard');
+        const container = document.getElementById('linksContainer');
+
+        if (!inputUrl) return alert("Please paste a link!");
+
+        loader.style.display = 'block';
+        card.style.display = 'none';
+        container.innerHTML = '';
+
+        // API Setup
+        const options = {
+            method: 'GET',
+            url: 'https://download-all-in-one-elite.p.rapidapi.com/api/download',
+            params: { url: inputUrl },
+            headers: {
+                'x-rapidapi-key': 'PASTE_YOUR_RAPID_API_KEY_HERE', // <-- YAHAN APNI KEY DALEIN
+                'x-rapidapi-host': 'download-all-in-one-elite.p.rapidapi.com'
+            }
+        };
+
+        try {
+            // Hum fetch API use karenge query params ke saath
+            const apiUrl = `https://download-all-in-one-elite.p.rapidapi.com/api/download?url=${encodeURIComponent(inputUrl)}`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: options.headers
+            });
+
+            const data = await response.json();
+
+            // Data Mapping from your JSON structure
+            document.getElementById('resThumb').src = data.thumbnail || 'https://via.placeholder.com/400x400';
+            document.getElementById('headerThumb').src = data.thumbnail || 'https://via.placeholder.com/64';
+            document.getElementById('resTitle').innerText = data.title || "No Title Available";
+
+            // Loop through medias array
+            data.medias.forEach(media => {
+                const linkObj = document.createElement('a');
+                linkObj.className = 'dl-btn';
+                linkObj.href = media.url;
+                linkObj.target = '_blank';
+                linkObj.innerHTML = `
+                    <span>${media.type.toUpperCase()} - ${media.quality}</span>
+                    <span>${media.extension.toUpperCase()} ⬇️</span>
+                `;
+                container.appendChild(linkObj);
+            });
+
+            loader.style.display = 'none';
+            card.style.display = 'block';
+
+        } catch (error) {
+            console.error(error);
+            alert("Error: API limit reached or invalid URL.");
+            loader.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
